@@ -53,6 +53,15 @@ pip3 install wandb==0.18.3
 bash src/scripts/run_grpo_combine.sh
 ```
 
+## Evaluation
+
+```bash
+cd src/open-r1-multimodal
+bash local_scripts/lmms_eval_qwen2vl.sh
+```
+
+
+
 ## Acknowledgements
 
 We sincerely thank [DeepSeek](https://github.com/deepseek-ai/DeepSeek-R1), [Open-R1](https://github.com/huggingface/open-r1), [QwenVL](https://github.com/QwenLM/Qwen2.5-VL), [Open-R1-Multimodal](https://github.com/EvolvingLMMs-Lab/open-r1-multimodal), [CLEVR](https://cs.stanford.edu/people/jcjohns/clevr/), [SuperCLEVR](https://github.com/Lizw14/Super-CLEVR) for providing open source resources and help for us to build the project.
