@@ -1,0 +1,4 @@
+data/*
+models/*
+logs/*
+src/open-r1-multimodal/debug_log_*.txt

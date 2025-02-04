@@ -17,9 +17,12 @@ import re
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
+import json
 
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset, load_from_disk, Dataset
 from transformers import Qwen2VLForConditionalGeneration
+from PIL import Image
+import datasets
 
 from math_verify import parse, verify
 from open_r1.trainer import Qwen2VLGRPOTrainer
@@ -69,11 +72,11 @@ def accuracy_reward(completions, solution, **kwargs):
         if reward == 0.0:
             try:
                 # Extract answer from solution if it has think/answer tags
-                sol_match = re.search(r'<answer>(.*?)</answer>', sol)
+                sol_match = re.search(r'<Output>(.*?)</Output>', sol)
                 ground_truth = sol_match.group(1).strip() if sol_match else sol.strip()
                 
                 # Extract answer from content if it has think/answer tags
-                content_match = re.search(r'<answer>(.*?)</answer>', content)
+                content_match = re.search(r'<Output>(.*?)</Output>', content)
                 student_answer = content_match.group(1).strip() if content_match else content.strip()
                 
                 # Compare the extracted answers
@@ -94,8 +97,11 @@ def accuracy_reward(completions, solution, **kwargs):
 
 
 def format_reward(completions, **kwargs):
-    """Reward function that checks if the completion has a specific format."""
-    pattern = r"<think>.*?</think>\s*<answer>.*?</answer>"
+    """Reward function that checks if the completion has the required format:
+    - Must have <Thought> tags with content
+    - Must have <Output> tags with both explanation and \boxed{answer}
+    """
+    pattern = r"<Thought>.*?</Thought>\s*<Output>.*?\\boxed{.*?}</Output>"
     completion_contents = [completion[0]["content"] for completion in completions]
     matches = [re.match(pattern, content) for content in completion_contents]
     return [1.0 if match else 0.0 for match in matches]
@@ -109,18 +115,14 @@ reward_funcs_registry = {
 SYSTEM_PROMPT = (
     "A conversation between User and Assistant. The user asks a question, and the Assistant solves it. The assistant "
     "first thinks about the reasoning process in the mind and then provides the user with the answer. The reasoning "
-    "process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., "
-    "<think> reasoning process here </think><answer> answer here </answer>"
+    "process and answer are enclosed within <Thought> </Thought> and <Output> </Output> tags, respectively, i.e., "
+    "<Thought> reasoning process here </Thought><Output> answer here </Output>"
 )
 
 
 def main(script_args, training_args, model_args):
     # Get reward functions
     reward_funcs = [reward_funcs_registry[func] for func in script_args.reward_funcs]
-
-    # Load the dataset
-    dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
-
 
     # Format into conversation
     def make_conversation(example):
@@ -131,21 +133,7 @@ def main(script_args, training_args, model_args):
             ],
         }
 
-    # def make_conversation_image(example):
-    #     return {
-    #         "prompt": [
-    #             {"role": "system", "content": [{"type": "text", "text": SYSTEM_PROMPT}]},
-    #             {
-    #                 "role": "user",
-    #                 "content": [
-    #                     {"type": "image"},
-    #                     {"type": "text", "text": example["problem"]},
-    #                 ],
-    #             },
-    #         ],
-    #     }
-
-    QUESTION_TEMPLATE = "{Question}  Output the thinking process in <think> </think> and final answer (number) in <answer> </answer> tags."
+    QUESTION_TEMPLATE = "{Question}  Output the thinking process in <Thought> </Thought> and provide a complete answer sentence in <Output> </Output> tags, where the final answer should be enclosed in \\boxed{{}} tags. Example: '<Thought>Here I am asked to ..</Thought><Output>The area of the triangle is \\boxed{{25}} square meters</Output>'"
 
     def make_conversation_image(example):
         return {
@@ -160,18 +148,78 @@ def main(script_args, training_args, model_args):
             ],
         }
 
-
-    if "image" in dataset[script_args.dataset_train_split].features:
-        print("has image in dataset")
-        dataset = dataset.map(make_conversation_image)  # Utilize multiprocessing for faster mapping
-        # dataset = dataset.remove_columns(["original_question", "original_answer"])
-
+    # Load the dataset
+    if script_args.dataset_name.endswith('.json'):
+        # 如果是本地JSON文件
+        with open(script_args.dataset_name, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        processed_data = []
+        for item in data:
+            # 处理图片路径并加载图片
+            image_path = item['images'][0] if item.get('images') else None
+            try:
+                # 直接加载图片数据
+                image = Image.open(image_path)
+            except Exception as e:
+                print(f"Error loading image {image_path}: {e}")
+                continue
+            
+            # 获取对话内容
+            conversations = item.get('conversations', [])
+            if len(conversations) >= 2:  # 确保至少有一问一答
+                human_msg = next((conv['value'] for conv in conversations if conv['from'] == 'human'), '')
+                gpt_msg = next((conv['value'] for conv in conversations if conv['from'] == 'gpt'), '')
+                
+                # 从human message中提取问题（移除<image>标记）
+                problem = human_msg.replace('<image>\n', '').strip()
+                
+                processed_data.append({
+                    'image': image,  # 直接存储图片对象
+                    'problem': problem,
+                    'solution': gpt_msg,
+                    'original_question': problem,
+                    'original_answer': gpt_msg,
+                })
+        
+        # 创建数据集，指定image特征为Image类型
+        features = datasets.Features({
+            'image': datasets.Image(),
+            'problem': datasets.Value('string'),
+            'solution': datasets.Value('string'),
+            'original_question': datasets.Value('string'),
+            'original_answer': datasets.Value('string'),
+        })
+        
+        dataset = Dataset.from_list(processed_data, features=features)
+        
+        # 先进行数据转换
+        if "image" in dataset.features:
+            print("has image in dataset")
+            dataset = dataset.map(make_conversation_image)
+        else:
+            print("no image in dataset")
+            dataset = dataset.map(make_conversation)
+            dataset = dataset.remove_columns("messages")
+            
+        # 然后再进行训练集和测试集的分割
+        splits = dataset.train_test_split(test_size=0.1, seed=42)
+        dataset = {
+            script_args.dataset_train_split: splits['train'],
+            script_args.dataset_test_split: splits['test']
+        }
     else:
-        print("no image in dataset")
-        dataset = dataset.map(make_conversation)
-        dataset = dataset.remove_columns("messages")
+        # 原有的HuggingFace数据集加载逻辑
+        dataset = load_dataset(script_args.dataset_name, name=script_args.dataset_config)
+        
+        if "image" in dataset[script_args.dataset_train_split].features:
+            print("has image in dataset")
+            dataset = dataset.map(make_conversation_image)
+        else:
+            print("no image in dataset")
+            dataset = dataset.map(make_conversation)
+            dataset = dataset.remove_columns("messages")
 
-    
     trainer_cls = Qwen2VLGRPOTrainer
 
 
