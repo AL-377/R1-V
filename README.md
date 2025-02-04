@@ -12,7 +12,7 @@
 
 5. Codes, models, datasets, more details and **all open-source** resources will be shared (within CNY holidays).
 
-**Contributors:** [Liang Chen](https://github.com/chenllliang) · [Lei Li](https://lilei-nlp.github.io) · [Haozhe Zhao](https://haozhezhao.github.io/) · [Yifan Song](https://github.com/Yifan-Song793)
+**Contributors:** [Liang Chen](https://github.com/chenllliang) · [Lei Li](https://lilei-nlp.github.io) · [Haozhe Zhao](https://haozhezhao.github.io/) · [Yifan Song](https://github.com/Yifan-Song793) · [Vinci](https://github.com/0xvincii)
 
 ---
 
@@ -23,7 +23,7 @@
 Updates:
 
 - 2025-02-03: We upload the training codebase.
-- 2025-02-03: We curate and upload some verified Deepseek-R1 visual reasoning traces with some special tricks. Current training code does not rely on it, feel free to explore.
+- 2025-02-03: We curate and upload some verified Deepseek-R1 visual reasoning traces with some special tricks (see `R1-V/src/distill_r1/`). Current training code does not rely on it, feel free to explore.
 
 
 ---
@@ -55,14 +55,14 @@ bash src/scripts/run_grpo_combine.sh
 
 ## Acknowledgements
 
-We sincerely thank [DeepSeek](https://github.com/deepseek-ai/DeepSeek-R1), [Open-R1](https://github.com/huggingface/open-r1), [QwenVL](https://github.com/QwenLM/Qwen2.5-VL), [Open-R1-Multimodal](https://github.com/EvolvingLMMs-Lab/open-r1-multimodal), [CLEVR](https://cs.stanford.edu/people/jcjohns/clevr/), [SuperCLEVR](https://github.com/Lizw14/Super-CLEVR) for providing open source resources for us to build the project.
+We sincerely thank [DeepSeek](https://github.com/deepseek-ai/DeepSeek-R1), [Open-R1](https://github.com/huggingface/open-r1), [QwenVL](https://github.com/QwenLM/Qwen2.5-VL), [Open-R1-Multimodal](https://github.com/EvolvingLMMs-Lab/open-r1-multimodal), [CLEVR](https://cs.stanford.edu/people/jcjohns/clevr/), [SuperCLEVR](https://github.com/Lizw14/Super-CLEVR) for providing open source resources and help for us to build the project.
 
 
 ## Citation
 
 ```bib
 @misc{chen2025r1v,
-  author       = {Chen, Liang and Li, Lei and Zhao, Haozhe and Song, Yifan},
+  author       = {Chen, Liang and Li, Lei and Zhao, Haozhe and Song, Yifan and Vinci},
   title        = {R1-V: Reinforcing Super Generalization Ability in Vision-Language Models with Less Than \$3},
   howpublished = {\url{https://github.com/Deep-Agent/R1-V}},
   note         = {Accessed: 2025-02-02},
