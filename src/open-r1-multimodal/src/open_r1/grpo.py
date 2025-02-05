@@ -79,12 +79,12 @@ def accuracy_reward(completions, solution, **kwargs):
         # If symbolic verification failed, try string matching
         if reward == 0.0:
             try:
-                # Extract answer from solution if it has think/answer tags
-                sol_match = re.search(r'<Output>(.*?)</Output>', sol)
+                # Extract answer from solution if it has \boxed{} tags
+                sol_match = re.search(r'\\boxed{(.*?)}', sol)
                 ground_truth = sol_match.group(1).strip() if sol_match else sol.strip()
                 
-                # Extract answer from content if it has think/answer tags
-                content_match = re.search(r'<Output>(.*?)</Output>', content)
+                # Extract answer from content if it has \boxed{} tags
+                content_match = re.search(r'\\boxed{(.*?)}', content)
                 student_answer = content_match.group(1).strip() if content_match else content.strip()
                 
                 # Compare the extracted answers
