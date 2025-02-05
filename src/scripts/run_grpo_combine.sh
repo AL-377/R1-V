@@ -25,7 +25,8 @@ torchrun --nproc_per_node="8" \
     --dataset_name /map-vepfs/ljt/R1-V/data/data_0_3/virgo_refined_rl_sample_sharegpt_all_acc.json \
     --max_prompt_length 8192 \
     --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
+    --num_generations 32 \
     --logging_steps 1 \
     --bf16 \
     --torch_dtype bfloat16 \
@@ -33,8 +34,8 @@ torchrun --nproc_per_node="8" \
     --gradient_checkpointing true \
     --attn_implementation flash_attention_2 \
     --max_pixels 2359296 \
-    --num_train_epochs 2 \
-    --run_name Qwen2-VL-2B-GRPO-Virgo-0_3-0_7 \
+    --num_train_epochs 4 \
+    --run_name Qwen2-VL-2B-GRPO-Virgo-0_3-0_7-32gen \
     --save_steps 100 \
     --save_only_model true \
     --logging_first_step true 2>&1 | tee "$LOG_FILE"

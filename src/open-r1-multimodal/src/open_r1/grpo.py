@@ -51,6 +51,14 @@ class GRPOScriptArguments(ScriptArguments):
         default=3136,
         metadata={"help": "Minimum number of pixels for the image"},
     )
+    min_image_size: Optional[int] = field(
+        default=28,
+        metadata={"help": "Minimum size for image dimensions"},
+    )
+    resize_method: Optional[str] = field(
+        default="bicubic",
+        metadata={"help": "Method to use for image resizing (bicubic, bilinear, nearest)"},
+    )
 
 
 def accuracy_reward(completions, solution, **kwargs):
@@ -120,6 +128,30 @@ SYSTEM_PROMPT = (
 )
 
 
+def preprocess_image(image, min_size=28):
+    """
+    预处理图片，确保图片尺寸不小于最小要求
+    Args:
+        image: PIL Image对象
+        min_size: 最小尺寸要求
+    Returns:
+        处理后的PIL Image对象
+    """
+    width, height = image.size
+    
+    # 如果图片任一维度小于最小尺寸，进行放大
+    if width < min_size or height < min_size:
+        # 计算需要的缩放比例
+        scale = max(min_size/width, min_size/height)
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+        
+        # 使用BICUBIC算法进行放大
+        image = image.resize((new_width, new_height), Image.BICUBIC)
+    
+    return image
+
+
 def main(script_args, training_args, model_args):
     # Get reward functions
     reward_funcs = [reward_funcs_registry[func] for func in script_args.reward_funcs]
@@ -159,10 +191,11 @@ def main(script_args, training_args, model_args):
             # 处理图片路径并加载图片
             image_path = item['images'][0] if item.get('images') else None
             try:
-                # 直接加载图片数据
+                # 直接加载并预处理图片数据
                 image = Image.open(image_path)
+                image = preprocess_image(image, min_size=script_args.min_image_size)  # 确保最小尺寸为28
             except Exception as e:
-                print(f"Error loading image {image_path}: {e}")
+                print(f"Error loading/processing image {image_path}: {e}")
                 continue
             
             # 获取对话内容
