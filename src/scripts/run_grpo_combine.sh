@@ -22,6 +22,7 @@ torchrun --nproc_per_node="8" \
     --deepspeed local_scripts/zero3.json \
     --output_dir /map-vepfs/ljt/R1-V/models \
     --model_name_or_path /map-vepfs/huggingface/models/Qwen2-VL-2B-Instruct \
+    # https://huggingface.co/datasets/Open-MMO1/virgo_qvqbo16_acc_0_3
     --dataset_name /map-vepfs/ljt/R1-V/data/data_0_3/virgo_refined_rl_sample_sharegpt_all_acc.json \
     --max_prompt_length 8192 \
     --per_device_train_batch_size 1 \
